@@ -23,5 +23,5 @@ Once mutated, upload the tile to your Ops Manager.
 
 Under Routing, ensure that the domains and ports do not collide with other installations of the tile.
 
-Once installed, run `cf enable-service-access redislabs-<label>` to enable the new service instance for your new install
+Once installed, run `cf enable-service-access redislabs-<label>` to enable the new service in your foundation
 
