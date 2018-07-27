@@ -60,8 +60,14 @@ def retile(source, label, work_dir, **kwargs):
     print 'Repackaging Service Broker'
     sb_job_contents = ('templates','monit','job.MF')
    
+   ##Tar takes the relative filepath, in order to make sure that everything is in the right place when Ops Manager
+   ##Untars the file we need to change to the workdir to run the command
+
+   ##I'm sure there's a way to do this in code that works around it without having to 
+   ##change dirs or use the shell command, but the obvious approaches weren't working
+
     original_context_path = getcwd()
-    chdir(jobs_work_dir)
+    chdir(jobs_work_dir) 
 
     files.tar(service_broker_job_filepath, sb_job_contents)
     files.cleanup_items(sb_job_contents)

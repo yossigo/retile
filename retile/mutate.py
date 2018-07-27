@@ -8,8 +8,6 @@ def add_label_to_filename(filename, label):
     _filename.insert(2, label)
     return '-'.join(_filename)
 
-## VV METADATA SECTION VV ##
-
 def metadata(metadata, label):
     '''Given a parsed metadata/redis-enterprise.yml file, modify it to allow for the tile to run next to another one'''
     
@@ -84,5 +82,3 @@ def __metadata_job_types_manifest(jt, label):
 
     if jt['name'] in ('broker_registrar', 'broker_deregistrar'): 
         jt['manifest'] = jt['manifest'].replace('redislabs', 'redislabs-' + label)
-
-## ^^ METADATA SECTION ^^ ##
