@@ -1,9 +1,10 @@
-from os import makedirs
-from os.path import exists, split, join
+from os import makedirs, unlink
+from os.path import exists, split, join, isfile
+from glob import glob
 from argparse import ArgumentParser
-from shutil import copyfile
-from zipfile import ZipFile
-from yaml import load
+from shutil import copyfile, rmtree
+from zipfile import ZipFile, ZIP_DEFLATED
+from yaml import load, dump
 
 def setup():
     '''
@@ -18,19 +19,27 @@ def setup():
         context['work_dir'] = '/tmp/retile'
 
     context['input'] = args.input[0]
-    context['output'] = args.output[0]
     context['label'] = args.label[0]
 
     return context
 
-def retile(input, output, label, work_dir, **kwargs):
+def retile(input, label, work_dir, **kwargs):
     '''Take input, modify to add label to metadata, create output file'''
 
     _create_fpath(work_dir)
     _unzip_file(input, work_dir)
-    print 'Importing ' + join(work_dir, 'metadata', 'redis-enterprise.yml')
-    metadata = _import_yaml_file(join(work_dir, 'metadata', 'redis-enterprise.yml'))
-    mutated_metadata = _mutate_metadata(metadata, label)
+    metadata_file = join(work_dir, 'metadata', 'redis-enterprise.yml')
+    print 'Importing ' + metadata_file
+    metadata = _import_yaml_file(metadata_file)
+    print 'Mutating metadata'
+    _mutate_metadata(metadata, label)
+    export_metadata_file = join(work_dir, 'metadata', 'redis-enterprise-' + label + '.yml')
+    _export_yaml_file(export_metadata_file, metadata)
+    unlink(metadata_file)
+    print 'Creating New Tile'
+    _zip_folder_contents(__add_label_to_filename(input, label), work_dir)
+    print 'Cleaning Up'
+    rmtree(work_dir)
     
 
 def _args():
@@ -39,7 +48,6 @@ def _args():
                                   description="Takes a Redis Enterprise for PCF tile and creates a new one with an added label, thus making it different from the unmutated tile and capable of being installed side by side."
                                   )
     cli.add_argument('input', type=str, nargs=1)
-    cli.add_argument('output', type=str, nargs=1)
     cli.add_argument('label', type=str, nargs=1)
     cli.add_argument('--work-dir', type=str, nargs=1)
 
@@ -61,6 +69,9 @@ def _import_yaml_file(yaml_file):
     with open(yaml_file) as f:
         return load(f)
 
+def _export_yaml_file(yaml_file, contents):
+    with open(yaml_file, 'w') as f:
+        dump(contents, f, default_flow_style=False)
 
 def _unzip_file(fpath, work_dir):
     '''Extracts fpath to work_dir'''
@@ -69,6 +80,11 @@ def _unzip_file(fpath, work_dir):
     _file.extractall(work_dir)
     _file.close()
 
+def _zip_folder_contents(output_file, dir):
+    with ZipFile(output_file, 'w', ZIP_DEFLATED) as z:
+        for _file in __traverse_file_path(dir):
+            z.write(_file)
+        z.close()
 
 def _create_fpath(fpath):
     '''Given a file path, check to see if it exists - if it doesn't create it'''
@@ -104,8 +120,6 @@ def _mutate_metadata(metadata, label):
     # import pdb; pdb.set_trace()
 
     # print metadata.keys()
-
-    return None
 
 
 def __mutate_releases(releases, label):
@@ -145,7 +159,6 @@ def __mutate_job_types(jts, label):
     for jt in jts:
         __mutate_release_in_templates(jt['templates'], label)
         __mutate_manifest_in_job_type(jt, label)
-        # print jt['templates']
 
 def __mutate_release_in_templates(templates, label):
     '''
@@ -175,6 +188,20 @@ def __add_label_to_filename(filename, label):
     _filename.insert(2, label)
     return '-'.join(_filename)
 
+def __traverse_file_path(filepath):
+    '''
+    Given a filepath, yield files in that path.
+    Is recursive, will only return files.
+    '''
+
+    files = glob(join(filepath, '*'))
+
+    for _file in files:
+        if isfile(_file):
+            yield _file
+        else:
+            for __file in __traverse_file_path(_file):
+                yield __file
 
 
 if __name__ == '__main__':
