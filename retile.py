@@ -1,10 +1,12 @@
-from os import makedirs, unlink
+from os import makedirs, unlink, chdir, getcwd
 from os.path import exists, split, join, isfile
+from subprocess import Popen, call
 from glob import glob
 from argparse import ArgumentParser
 from shutil import copyfile, rmtree
 from zipfile import ZipFile, ZIP_DEFLATED
 from yaml import load, dump
+from uuid import uuid4
 
 def setup():
     '''
@@ -18,26 +20,78 @@ def setup():
     else:
         context['work_dir'] = '/tmp/retile'
 
-    context['input'] = args.input[0]
+    context['_input'] = args.input[0]
     context['label'] = args.label[0]
 
     return context
 
-def retile(input, label, work_dir, **kwargs):
+def retile(_input, label, work_dir, **kwargs):
     '''Take input, modify to add label to metadata, create output file'''
 
+    
     _create_fpath(work_dir)
-    _unzip_file(input, work_dir)
+    print 'Extracting ' + _input + ' to ' + work_dir
+    _unzip_file(_input, work_dir)
     metadata_file = join(work_dir, 'metadata', 'redis-enterprise.yml')
     print 'Importing ' + metadata_file
     metadata = _import_yaml_file(metadata_file)
-    print 'Mutating metadata'
+    print 'Mutating Metadata'
     _mutate_metadata(metadata, label)
     export_metadata_file = join(work_dir, 'metadata', 'redis-enterprise-' + label + '.yml')
+    print 'Exporting Mutated Metadata file'
     _export_yaml_file(export_metadata_file, metadata)
+    print 'Eradicating Old Metadata'
     unlink(metadata_file)
+
+    _release_file = _input.split('.')
+    _release_file.pop()
+    release_filename =  '.'.join(_release_file) + '.tgz'
+    release_workdir = join(work_dir, 'releases')
+    release_filepath = join(release_workdir, release_filename)
+    
+
+    print 'Extracting ' + release_filename + ' to ' + release_workdir
+    _untar_file(release_filepath, release_workdir)
+
+    print 'Mutating Release Manifest'
+    release_manifest_filepath = join(release_workdir, 'release.MF')
+    release_manifest = _import_yaml_file(release_manifest_filepath)
+    release_manifest['name'] = release_manifest['name'] + '-' + label
+    _export_yaml_file(release_manifest_filepath, release_manifest)
+
+    print 'Mutating Service Broker Config'
+    jobs_work_dir = join(release_workdir, 'jobs')
+    service_broker_job_filepath = join(release_workdir, 'jobs', 'redislabs-service-broker.tgz')
+    _untar_file(service_broker_job_filepath, jobs_work_dir)
+
+    sb_config_template_filepath = join(jobs_work_dir, 'templates', 'config.yml.erb')
+    sb_config_template = _read_file_contents(sb_config_template_filepath)
+    sb_config_template = sb_config_template.replace('redislabs', 'redislabs-' + label)
+    sb_config_template = sb_config_template.replace('6bfa3113-5257-42d3-8ee2-5f28be9335e2', str(uuid4()))
+    _write_file_contents(sb_config_template_filepath, sb_config_template)
+
+    print 'Repackaging Service Broker'
+    sb_job_contents = ('templates','monit','job.MF')
+   
+    original_context_path = getcwd()
+    chdir(jobs_work_dir)
+
+    _tar_file(service_broker_job_filepath, sb_job_contents)
+    _cleanup_working_items(sb_job_contents)
+
+    print 'Repackaging Release'
+    chdir(release_workdir)
+
+    release_contents = ('release.MF', 'packages', 'jobs')
+    _tar_file(join(release_workdir, __add_label_to_filename(release_filename, label)), release_contents)
+    _cleanup_working_items(release_contents)
+    unlink(release_filepath)
+
+    chdir(original_context_path)
+
     print 'Creating New Tile'
-    _zip_folder_contents(__add_label_to_filename(input, label), work_dir)
+    _zip_folder_contents(__add_label_to_filename(_input, label), work_dir)
+    
     print 'Cleaning Up'
     rmtree(work_dir)
     
@@ -53,19 +107,7 @@ def _args():
 
     return cli.parse_args()
 
-
-# def _move_file_to_folder(fpath, folder):
-#     '''Given a filepath and destination folder, move the filepath to the folder'''
-    
-#     root, file_name = split(fpath)
-#     dest = join(folder, file_name)
-    
-#     print 'Moving ' + fpath + ' to ' + dest
-    
-#     copyfile(fpath, dest)
-
 def _import_yaml_file(yaml_file):
-
     with open(yaml_file) as f:
         return load(f)
 
@@ -75,7 +117,6 @@ def _export_yaml_file(yaml_file, contents):
 
 def _unzip_file(fpath, work_dir):
     '''Extracts fpath to work_dir'''
-    print 'Extracting ' + fpath + ' to ' + work_dir
     _file = ZipFile(fpath, 'r')
     _file.extractall(work_dir)
     _file.close()
@@ -85,6 +126,23 @@ def _zip_folder_contents(output_file, dir):
         for _file in __traverse_file_path(dir):
             z.write(_file)
         z.close()
+
+def _untar_file(fpath, work_dir):
+    call('/usr/bin/tar xzf ' + fpath + ' -C ' + work_dir, shell=True)
+
+def _tar_file(output_file, items):
+    call('/usr/bin/tar czf ' + output_file + ' ' + ' '.join(items), shell=True)
+
+def _read_file_contents(fpath):
+    with open(fpath, 'r') as f:
+        return f.read()
+
+def _write_file_contents(fpath, contents):
+    with open(fpath, 'w') as f:
+        f.write(contents)
+
+def _cleanup_working_items(working_items):
+    call('rm -rf ' + ' '.join(working_items), shell=True)
 
 def _create_fpath(fpath):
     '''Given a file path, check to see if it exists - if it doesn't create it'''
@@ -110,17 +168,6 @@ def _mutate_metadata(metadata, label):
     __mutate_property_blueprints(metadata['property_blueprints'], label)
     print 'Mutating Job Types'
     __mutate_job_types(metadata['job_types'], label)
-
-    # print metadata['name']
-    # print metadata['label']
-    # print metadata['releases']
-    # print metadata['provides_product_versions']
-    # print metadata['property_blueprints']
-    # print metadata['job_types']
-    # import pdb; pdb.set_trace()
-
-    # print metadata.keys()
-
 
 def __mutate_releases(releases, label):
     '''

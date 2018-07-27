@@ -7,7 +7,6 @@ Retile takes a [Redis Enterprise for PCF tile](https://network.pivotal.io/produc
 
 ## Requirements
 - python
-- zip/unzip
 - tar
 - a tile you wish to mutate
 
