@@ -3,7 +3,7 @@ from os.path import exists, split, join, isfile
 from subprocess import Popen, call
 from glob import glob
 from argparse import ArgumentParser
-from shutil import copyfile, rmtree
+from shutil import copyfile, rmtree, move
 from zipfile import ZipFile, ZIP_DEFLATED
 from yaml import load, dump
 from uuid import uuid4
@@ -87,13 +87,17 @@ def retile(_input, label, work_dir, **kwargs):
     _cleanup_working_items(release_contents)
     unlink(release_filepath)
 
-    chdir(original_context_path)
+    chdir(work_dir)
 
     print 'Creating New Tile'
-    _zip_folder_contents(__add_label_to_filename(_input, label), work_dir)
-    
-    print 'Cleaning Up'
-    rmtree(work_dir)
+    tile_items = ('metadata', 'migrations', 'releases', 'tile-generator')
+    output_file = __add_label_to_filename(_input, label)
+    _zip_folder_contents(output_file, tile_items)
+    move(join(work_dir, output_file), join(original_context_path, output_file))
+
+
+    #print 'Cleaning Up'
+    #rmtree(work_dir)
     
 
 def _args():
@@ -121,17 +125,14 @@ def _unzip_file(fpath, work_dir):
     _file.extractall(work_dir)
     _file.close()
 
-def _zip_folder_contents(output_file, dir):
-    with ZipFile(output_file, 'w', ZIP_DEFLATED) as z:
-        for _file in __traverse_file_path(dir):
-            z.write(_file)
-        z.close()
+def _zip_folder_contents(output_file, items):
+    call('zip -r ' + output_file + ' ' + ' '.join(items), shell=True)
 
 def _untar_file(fpath, work_dir):
-    call('/usr/bin/tar xzf ' + fpath + ' -C ' + work_dir, shell=True)
+    call('tar xzf ' + fpath + ' -C ' + work_dir, shell=True)
 
 def _tar_file(output_file, items):
-    call('/usr/bin/tar czf ' + output_file + ' ' + ' '.join(items), shell=True)
+    call('tar czf ' + output_file + ' ' + ' '.join(items), shell=True)
 
 def _read_file_contents(fpath):
     with open(fpath, 'r') as f:
