@@ -8,9 +8,20 @@ Retile takes a [Redis Enterprise for PCF tile](https://network.pivotal.io/produc
 ## Requirements
 - python
 - tar
+- zip
 - a tile you wish to mutate
 
 ## Usage
 
+To install dependancies, run `pip install -r requirements.txt`.
+
+To mutate a tile, run `python retile.py <tile file> <label>`
+
 ## Installing the mutated tile
+
+Once mutated, upload the tile to your Ops Manager.
+
+Under Routing, ensure that the domains and ports do not collide with other installations of the tile.
+
+Once installed, run `cf enable-service-access redislabs-<label>` to enable the new service instance for your new install
 
