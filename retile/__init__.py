@@ -36,17 +36,12 @@ def retile(source, label, work_dir, **kwargs):
     print 'Extracting ' + release_filename + ' to ' + release_workdir
     files.untar(release_filepath, release_workdir)
 
-    print 'Mutating Release Manifest'
-    release_manifest_filepath = join(release_workdir, 'release.MF')
-    release_manifest = files.import_yaml(release_manifest_filepath)
-    release_manifest['name'] = release_manifest['name'] + '-' + label
-    files.export_yaml(release_manifest_filepath, release_manifest)
-
     ##Then change the service broker config file to have a different service name and ID
 
     print 'Mutating Service Broker Config'
     jobs_work_dir = join(release_workdir, 'jobs')
     service_broker_job_filepath = join(release_workdir, 'jobs', 'redislabs-service-broker.tgz')
+    
     files.untar(service_broker_job_filepath, jobs_work_dir)
 
     sb_config_template_filepath = join(jobs_work_dir, 'templates', 'config.yml.erb')
@@ -71,6 +66,14 @@ def retile(source, label, work_dir, **kwargs):
 
     files.tar(service_broker_job_filepath, sb_job_contents)
     files.cleanup_items(sb_job_contents)
+    sb_sha_256 = files.sha256(service_broker_job_filepath)
+
+
+    print 'Mutating Release Manifest'
+    release_manifest_filepath = join(release_workdir, 'release.MF')
+    release_manifest = files.import_yaml(release_manifest_filepath)
+    mutate.release_manifest(release_manifest, label, sb_sha_256)
+    files.export_yaml(release_manifest_filepath, release_manifest)
 
     print 'Repackaging Release'
     chdir(release_workdir)

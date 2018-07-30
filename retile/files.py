@@ -3,7 +3,10 @@ from os.path import exists, join
 from subprocess import call
 from shutil import copyfile, rmtree, move
 from zipfile import ZipFile
+from hashlib import sha256 as _sha256
+
 from yaml import load, dump
+
 
 def import_yaml(yaml_file):
     '''
@@ -94,3 +97,11 @@ def create_path(file_path):
 
     if not exists(file_path):
         makedirs(file_path)
+
+def sha256(file_path):
+    '''
+    Given a file path
+    calculate the sha256 of its contents
+    '''
+    contents = read_contents(file_path)
+    return _sha256(contents).hexdigest()

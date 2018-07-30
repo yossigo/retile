@@ -8,6 +8,20 @@ def add_label_to_filename(filename, label):
     _filename.insert(2, label)
     return '-'.join(_filename)
 
+def release_manifest(release_manifest, label, sb_sha_256):
+    '''
+    Given a parsed release_manifest object from releases/release.MF (inside redis-enterprise tarball), 
+    a label and sha256 for the modify service broker tarball
+
+    modify the release manifest to have the newly modified info
+    '''
+
+    release_manifest['name'] = release_manifest['name'] + '-' + label
+
+    for job in release_manifest['jobs']:
+        if job['name'] == 'redislabs-service-broker':
+            job['sha1'] = 'sha256:' + sb_sha_256 
+
 def metadata(metadata, label):
     '''Given a parsed metadata/redis-enterprise.yml file, modify it to allow for the tile to run next to another one'''
     
