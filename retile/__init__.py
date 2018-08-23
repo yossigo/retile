@@ -1,7 +1,7 @@
 from os import getcwd, unlink, chdir
 from os.path import join
 from shutil import move, rmtree
-from uuid import uuid4
+from hashlib import sha256 as _sha256
 
 from retile import mutate, files
 
@@ -47,7 +47,7 @@ def retile(source, label, work_dir, **kwargs):
     sb_config_template_filepath = join(jobs_work_dir, 'templates', 'config.yml.erb')
     sb_config_template = files.read_contents(sb_config_template_filepath)
     sb_config_template = sb_config_template.replace('redislabs', 'redislabs-' + label)
-    sb_config_template = sb_config_template.replace('6bfa3113-5257-42d3-8ee2-5f28be9335e2', str(uuid4()))
+    sb_config_template = sb_config_template.replace('6bfa3113-5257-42d3-8ee2-5f28be9335e2', _sha256(label).hexdigest())
     files.write_contents(sb_config_template_filepath, sb_config_template)
 
     ##Now put it all back together
