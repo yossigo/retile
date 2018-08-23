@@ -14,7 +14,8 @@ def retile(source, work_dir, **kwargs):
 
     if 'service-broker' not in source:
         mutate.bosh_managed_tile(source, work_dir, **kwargs)
+    else:
+        mutate.service_broker_tile(source, work_dir, **kwargs)
     
-
-    print 'Cleaning Up'
-    rmtree(work_dir)
+    # print 'Cleaning Up'
+    # rmtree(work_dir)

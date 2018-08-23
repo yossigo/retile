@@ -1,6 +1,7 @@
-from bosh_managed import bosh_managed_tile
-from service_broker import service_broker_tile
+from os import unlink
+from os.path import join
 
+from retile import files
 
 def add_label_to_filename(filename, label):
     '''
@@ -12,8 +13,23 @@ def add_label_to_filename(filename, label):
     _filename.insert(2, label)
     return '-'.join(_filename)
 
+def mutate_metadata(work_dir, label, slug):
 
-def metadata(metadata, label):
+    metadata_file = join(work_dir, 'metadata', 'redislabs-service-broker.yml')
+    print 'Importing ' + metadata_file
+    metadata = files.import_yaml(metadata_file)
+    print 'Mutating Metadata'
+
+    _metadata(metadata, label)
+
+    export_metadata_file = join(work_dir, 'metadata', slug + '-' + label + '.yml')
+    print 'Exporting Mutated Metadata file'
+    files.export_yaml(export_metadata_file, metadata)
+    print 'Eradicating Old Metadata'
+    unlink(metadata_file)
+    
+
+def _metadata(metadata, label):
     '''Given a parsed metadata/redis-enterprise.yml file, modify it to allow for the tile to run next to another one'''
     
     print 'Changing tile name from ' + metadata['name'] + ' to ' + metadata['name'] + '-' + label
