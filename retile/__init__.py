@@ -13,9 +13,9 @@ def retile(source, work_dir, **kwargs):
     files.unzip(source, work_dir)
 
     if 'service-broker' not in source:
-        mutate.bosh_managed_tile(source, work_dir, **kwargs)
+        mutate.tile('redis-enterprise', source=source, work_dir=work_dir, **kwargs)
     else:
-        mutate.service_broker_tile(source, work_dir, **kwargs)
+        mutate.tile('redislabs-service-broker', source=source, work_dir=work_dir, **kwargs)
     
-    # print 'Cleaning Up'
-    # rmtree(work_dir)
+    print 'Cleaning Up'
+    rmtree(work_dir)
