@@ -19,7 +19,8 @@ def mutate(source, work_dir, label, **kwargs):
     service_broker_job_filepath = join(jobs_work_dir,'redislabs-service-broker.tgz')
 
     _mutate_service_broker_config(jobs_work_dir, service_broker_job_filepath, label)
-    _repackage_service_broker(jobs_work_dir, service_broker_job_filepath)
+    sha = _repackage_service_broker(jobs_work_dir, service_broker_job_filepath)
+    _mutate_release_manifest(release_work_dir, sha, label)
     _repackage_release(work_dir, release_work_dir, release_filename, release_filepath, label)
 
 
@@ -53,7 +54,7 @@ def _repackage_service_broker(jobs_work_dir, service_broker_job_filepath):
     files.cleanup_items(sb_job_contents)
     return files.sha256(service_broker_job_filepath)
 
-def _mutate_release_manifest(release_work_dir, sb_sha_256):
+def _mutate_release_manifest(release_work_dir, sb_sha_256, label):
 
     print 'Mutating Release Manifest'
     release_manifest_filepath = join(release_work_dir, 'release.MF')
