@@ -87,6 +87,8 @@ def cleanup_items(items):
     call `rm -rf` on the items
     '''
 
+    assert isinstance(items, (tuple, list, set)) # just to make sure that you don't accidentally pass a string and delete everything
+
     call('rm -rf ' + ' '.join(items), shell=True)
 
 def create_path(file_path):
