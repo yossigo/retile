@@ -83,6 +83,7 @@ def __metadata_release(templates, label):
     Given a list of releases from a job type obj from a metadata/redis-enterprise.yml file
     update release from 'redis-enterprise' to 'redis-enterprise-LABEL'
     '''
+    
     for template in templates:
         if template['release'] == 'redis-enterprise':
             template['release'] = template['release'] + '-' + label
@@ -92,6 +93,8 @@ def __metadata_job_types_manifest(jt, label):
     Given a job type object from a metadata/redis-enterprise.yml file
     update various values in the manifest depending on which job it is
     '''
+    assert isinstance(jt, dict)
+    assert isinstance(label, (str, unicode))
 
-    if jt['name'] in ('broker_registrar', 'broker_deregistrar'): 
+    if jt.get('name') in ('broker_registrar', 'broker_deregistrar'): 
         jt['manifest'] = jt['manifest'].replace('redislabs', 'redislabs-' + label)
