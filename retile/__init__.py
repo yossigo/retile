@@ -16,6 +16,7 @@ def retile(source, work_dir, **kwargs):
         mutate.tile('redis-enterprise', source=source, work_dir=work_dir, **kwargs)
     else:
         mutate.tile('redislabs-service-broker', source=source, work_dir=work_dir, **kwargs)
-    
-    print 'Cleaning Up'
-    rmtree(work_dir)
+
+    if not kwargs.get('keep_workdir'):
+        print 'Cleaning Up'
+        rmtree(work_dir)
