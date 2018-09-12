@@ -1,5 +1,5 @@
 from os import getcwd
-from os.path import join
+from os.path import join, basename
 from shutil import move
 
 from retile import files
@@ -17,6 +17,6 @@ def tile(slug, **kwargs):
 def _rebuild_tile(original_context_path, source, work_dir, label, **kwargs):
     print 'Creating New Tile'
     tile_items = ('metadata', 'migrations', 'releases', 'tile-generator')
-    output_file = add_label_to_filename(source, label)
+    output_file = add_label_to_filename(basename(source), label)
     files.zip_items(output_file, tile_items)
     move(join(work_dir, output_file), join(original_context_path, output_file))

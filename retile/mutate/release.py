@@ -1,32 +1,34 @@
 from os import getcwd, chdir, unlink
-from os.path import join
+from os.path import join, basename
+from glob import glob
 from hashlib import sha256
+import re
 
 from retile import files
 from retile.mutate.common import add_label_to_filename
 
 def mutate(source, work_dir, label, **kwargs):
-
-    _release_file = source.split('.')
-    _release_file.pop()
-    release_filename =  '.'.join(_release_file) + '.tgz'
+    _release_file = re.sub('-\d.*$', '', basename(source))
+    _release_wildcard =  _release_file + '*.tgz'
 
     release_work_dir = join(work_dir, 'releases')
-    release_filepath = join(release_work_dir, release_filename)
+    _release_files = glob(join(release_work_dir, _release_wildcard))
+    assert len(_release_files) == 1
+    release_filepath = _release_files[0]
     files.untar(release_filepath, release_work_dir)
-    
+
     jobs_work_dir = join(release_work_dir, 'jobs')
     service_broker_job_filepath = join(jobs_work_dir,'redislabs-service-broker.tgz')
 
     _mutate_service_broker_config(jobs_work_dir, service_broker_job_filepath, label)
     sha = _repackage_service_broker(jobs_work_dir, service_broker_job_filepath)
     _mutate_release_manifest(release_work_dir, sha, label)
-    _repackage_release(work_dir, release_work_dir, release_filename, release_filepath, label)
+    _repackage_release(work_dir, release_work_dir, basename(release_filepath), release_filepath, label)
 
 
 def _mutate_service_broker_config(jobs_work_dir, service_broker_job_filepath, label):
     ##Then change the service broker config file to have a different service name and ID
-    
+
     print 'Mutating Service Broker Config'
     files.untar(service_broker_job_filepath, jobs_work_dir)
 
@@ -45,10 +47,10 @@ def _repackage_service_broker(jobs_work_dir, service_broker_job_filepath):
     ##Tar takes the relative filepath, in order to make sure that everything is in the right place when Ops Manager
     ##Untars the file we need to change to the workdir to run the command
 
-    ##I'm sure there's a way to do this in code that works around it without having to 
+    ##I'm sure there's a way to do this in code that works around it without having to
     ##change dirs or use the shell command, but the obvious approaches weren't working
 
-    chdir(jobs_work_dir) 
+    chdir(jobs_work_dir)
 
     files.tar(service_broker_job_filepath, sb_job_contents)
     files.cleanup_items(sb_job_contents)
@@ -61,7 +63,7 @@ def _mutate_release_manifest(release_work_dir, sb_sha_256, label):
     release_manifest = files.import_yaml(release_manifest_filepath)
 
     # '''
-    # Given a parsed release_manifest object from releases/release.MF (inside redis-enterprise tarball), 
+    # Given a parsed release_manifest object from releases/release.MF (inside redis-enterprise tarball),
     # a label and sha256 for the modify service broker tarball
 
     # modify the release manifest to have the newly modified info
@@ -70,7 +72,7 @@ def _mutate_release_manifest(release_work_dir, sb_sha_256, label):
 
     for job in release_manifest['jobs']:
         if job['name'] == 'redislabs-service-broker':
-            job['sha1'] = 'sha256:' + sb_sha_256 
+            job['sha1'] = 'sha256:' + sb_sha_256
 
     files.export_yaml(release_manifest_filepath, release_manifest)
 
