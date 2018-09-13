@@ -13,17 +13,19 @@ def mutate(slug, work_dir, label, **kwargs):
     print 'Mutating Metadata'
 
     _metadata(metadata, label)
+    if 'mutate_func' in kwargs:
+        kwargs['mutate_func'](metadata)
 
     export_metadata_file = join(work_dir, 'metadata', slug + '-' + label + '.yml')
     print 'Exporting Mutated Metadata file'
     files.export_yaml(export_metadata_file, metadata)
     print 'Eradicating Old Metadata'
     unlink(metadata_file)
-    
+
 
 def _metadata(metadata, label):
     '''Given a parsed metadata/redis-enterprise.yml file, modify it to allow for the tile to run next to another one'''
-    
+
     print 'Changing tile name from ' + metadata['name'] + ' to ' + metadata['name'] + '-' + label
     metadata['name'] = metadata['name'] + '-' + label
 
@@ -83,7 +85,7 @@ def __metadata_release(templates, label):
     Given a list of releases from a job type obj from a metadata/redis-enterprise.yml file
     update release from 'redis-enterprise' to 'redis-enterprise-LABEL'
     '''
-    
+
     for template in templates:
         if template['release'] in ('redis-enterprise', 'redislabs-service-broker'):
             template['release'] = template['release'] + '-' + label
@@ -94,5 +96,5 @@ def __metadata_job_types_manifest(jt, label):
     update various values in the manifest depending on which job it is
     '''
 
-    if jt.get('name') in ('broker_registrar', 'broker_deregistrar'): 
+    if jt.get('name') in ('broker_registrar', 'broker_deregistrar'):
         jt['manifest'] = jt['manifest'].replace('redislabs', 'redislabs-' + label)
